@@ -100,24 +100,10 @@ class OutputHandler:
                 ])
                 dv.add(f'A{ws.max_row}')
 
-        # 设置自动换行样式
-        from openpyxl.styles import Alignment
-        wrap_alignment = Alignment(wrap_text=True)
-        
-        # 为Short Description / Action列(C列)设置自动换行
-        for row in ws.iter_rows(min_col=3, max_col=3):
-            for cell in row:
-                cell.alignment = wrap_alignment
-                
-        # 为input signal列(E列)设置自动换行
-        for row in ws.iter_rows(min_col=5, max_col=5):
-            for cell in row:
-                cell.alignment = wrap_alignment
-
-        # 统一设置所有列宽为30
-        for col in 'ABCDEFGHIJ':  # 假设表格有10列
-            ws.column_dimensions[col].width = 30
-
+        # 统一设置列宽为25
+        for col in ws.columns:
+            col_letter = col[0].column_letter
+            ws.column_dimensions[col_letter].width = 25
 
         # 保存文件
         wb.save(output_path)

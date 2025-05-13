@@ -16,14 +16,14 @@ class DocumentParser:
         self.signal_cache = {}
         
     def parse_pdf(self, pdf_path: Optional[Path] = None) -> List[Dict[str, Any]]:
-        """解析功能规范PDF文件，返回结构化需求"""
+        """解析功能规范PDF文件，返回原始文本内容"""
         pdf_path = pdf_path or self.config.INPUTS_DIR / "功能规范-第七章.pdf"
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF文件不存在: {pdf_path}")
             
         with open(pdf_path, 'rb') as f:
             reader = PyPDF2.PdfReader(f)
-            # 增强文本提取，处理可能的编码问题
+            # 提取全部文本内容
             text = ""
             for page in reader.pages:
                 try:
@@ -33,6 +33,14 @@ class DocumentParser:
                 except Exception as e:
                     print(f"⚠️ 页面解析异常: {str(e)}")
                     continue
+        
+        # 返回包含原始文本的字典列表
+        return [{
+            "id": "raw_text",
+            "description": "PDF原始文本内容",
+            "content": text,
+            "type": "RawText"
+        }]
         
         # 增强章节分割逻辑
         sections = self._extract_sections(text)

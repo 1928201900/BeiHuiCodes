@@ -45,9 +45,12 @@ class TestCaseGenerator:
     def _build_prompt(self, requirements: List[Dict[str, Any]], 
                      signals: Dict[str, Dict[str, Any]]) -> str:
         """构建AI生成测试用例的提示词"""
-        # 示例测试用例格式说明
+        # 提取原始文本内容
+        raw_text = requirements[0]["content"] if requirements else ""
+        
+        # 定义示例格式
         example_format = """
-【测试用例格式】[
+[
   {
     "description": "挂R档，倒车灯点亮",
     "coverage": ["需求1.1", "VCU_ActGear"],
@@ -72,20 +75,19 @@ class TestCaseGenerator:
       "倒车灯应点亮"
     ]
   }
-]        """
+]"""
         
-        # 构建提示词
         prompt = f"""
-你是一位专业的汽车电子测试工程师，擅长根据功能规范和CAN信号矩阵生成全面的测试用例。请严格按照以下要求生成测试用例：
+你是一位专业的汽车电子测试工程师，请根据以下PDF文档内容生成测试用例：
 
-【功能规范】
-{json.dumps(requirements, indent=2, ensure_ascii=False)}
+【PDF文档原始内容】
+{raw_text}
 
 【CAN信号矩阵】
 {json.dumps(signals, indent=2, ensure_ascii=False)}
 
 【详细要求】
-1. **测试用例描述**：简洁明了，直接说明测试场景和验证内容，如“挂R档，倒车灯点亮”。
+1. **测试用例描述**：简洁明了，直接说明测试场景和验证内容，如"挂R档，倒车灯点亮"。
 2. **需求覆盖**：覆盖所有功能需求，包括正常、异常和边界情况。每个功能需求至少生成3个不同场景的测试用例。
 3. **测试用例结构**：每个测试用例必须包含以下字段：
    - `description`：简明扼要地说明测试内容。
@@ -97,21 +99,6 @@ class TestCaseGenerator:
    - `expected`：明确的预期行为，与输出信号和测试目的一致。
 4. **异常处理**：针对每个功能需求，生成至少1个异常情况的测试用例，如信号无效、超出边界值等。
 5. **格式要求**：输出必须为符合以下格式的JSON数组：
-[
-  {{
-    "description": "测试描述",
-    "coverage": ["需求ID/信号ID"],
-    "input_signal": {{
-      "信号名称": "信号值"
-    }},
-    "output_signal": "输出信号变化",
-    "precondition": ["前置条件1", "前置条件2"],
-    "steps": ["步骤1", "步骤2"],
-    "expected": ["预期结果1", "预期结果2"]
-  }}
-]
-
-【示例格式】
 {example_format}
         """
         return prompt
