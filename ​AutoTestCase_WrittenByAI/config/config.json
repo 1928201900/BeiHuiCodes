@@ -1,0 +1,13 @@
+{
+    "system_name": "BCM",
+    "default_test_prefix": "TC",
+    "excel_columns": [
+        "用例ID", "类型", "描述", 
+        "覆盖项目", "测试步骤", "预期结果", 
+        "通过标准"
+    ],
+    "ai_settings": {
+        "temperature": 0.7,
+        "max_output_tokens": 2000
+    }
+}
