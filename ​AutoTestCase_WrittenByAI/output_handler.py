@@ -100,6 +100,11 @@ class OutputHandler:
                 ])
                 dv.add(f'A{ws.max_row}')
 
+        # 统一设置列宽为25
+        for col in ws.columns:
+            col_letter = col[0].column_letter
+            ws.column_dimensions[col_letter].width = 25
+
         # 保存文件
         wb.save(output_path)
         print(f"✅ 测试用例已保存至: {output_path}")
