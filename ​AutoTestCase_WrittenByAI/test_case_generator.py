@@ -41,6 +41,7 @@ class TestCaseGenerator:
             print(f"原始响应内容:\n{response[:500]}...")
             return []
     
+
     def _build_prompt(self, requirements: List[Dict[str, Any]], 
                      signals: Dict[str, Dict[str, Any]]) -> str:
         """构建AI生成测试用例的提示词"""
@@ -75,7 +76,7 @@ class TestCaseGenerator:
         
         # 构建提示词
         prompt = f"""
-你是一位专业的汽车电子测试工程师，擅长根据功能规范和CAN信号矩阵生成全面的测试用例。
+你是一位专业的汽车电子测试工程师，擅长根据功能规范和CAN信号矩阵生成全面的测试用例。请严格按照以下要求生成测试用例：
 
 【功能规范】
 {json.dumps(requirements, indent=2, ensure_ascii=False)}
@@ -83,18 +84,20 @@ class TestCaseGenerator:
 【CAN信号矩阵】
 {json.dumps(signals, indent=2, ensure_ascii=False)}
 
-请基于以上信息，生成符合以下要求的测试用例：
-1. 测试用例描述简洁，直接说明测试场景和验证内容，如“挂R档，倒车灯点亮”。
-2. 覆盖所有功能需求，包括正常、异常和边界情况
-3. 每个测试用例必须包含：
-   - 测试描述（简明扼要地说明测试内容）
-   - 覆盖的需求ID/信号ID
-   - 详细测试步骤（使用序号开头，如"1. 操作内容"）
-   - 预期结果（明确的预期行为）
-   - 输入信号（使用信号名称和有效值）
-   - 输出信号（预期的信号变化）
-   - 前置条件（执行测试前必须满足的条件）
-4. 输出格式：[
+【详细要求】
+1. **测试用例描述**：简洁明了，直接说明测试场景和验证内容，如“挂R档，倒车灯点亮”。
+2. **需求覆盖**：覆盖所有功能需求，包括正常、异常和边界情况。每个功能需求至少生成3个不同场景的测试用例。
+3. **测试用例结构**：每个测试用例必须包含以下字段：
+   - `description`：简明扼要地说明测试内容。
+   - `coverage`：覆盖的需求ID/信号ID列表，确保全面覆盖相关需求和信号。
+   - `input_signal`：使用信号名称和有效值，模拟真实的测试输入。
+   - `output_signal`：预期的信号变化，明确可验证的输出。
+   - `precondition`：执行测试前必须满足的条件，确保测试环境的正确性。
+   - `steps`：详细测试步骤，使用序号开头，如"1. 操作内容"，步骤需具有可操作性。
+   - `expected`：明确的预期行为，与输出信号和测试目的一致。
+4. **异常处理**：针对每个功能需求，生成至少1个异常情况的测试用例，如信号无效、超出边界值等。
+5. **格式要求**：输出必须为符合以下格式的JSON数组：
+[
   {{
     "description": "测试描述",
     "coverage": ["需求ID/信号ID"],
@@ -107,20 +110,21 @@ class TestCaseGenerator:
     "expected": ["预期结果1", "预期结果2"]
   }}
 ]
-以下是一个测试用例的示例格式：
+
+【示例格式】
 {example_format}
         """
-        
         return prompt
-    
     def _call_ai(self, prompt: str) -> Optional[str]:
         """调用AI生成测试用例"""
         try:
-            print("正在调用AI生成测试用例...")
+            import logging
+            logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+            logging.info("正在调用AI生成测试用例...")
             completion = self.client.chat.completions.create(
                 model=self.config.MODEL,
                 messages=[
-                    {"role": "system", "content": "你是一个专业的汽车电子测试工程师，擅长根据功能规范和CAN信号矩阵生成全面的测试用例。"},
+                    {"role": "system", "content": "你是一个专业的汽车电子测试工程师，擅长根据功能规范和CAN信号矩阵生成全面的测试用例。请严格按照用户提供的详细要求生成测试用例。"},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,  # 降低随机性，提高确定性
@@ -128,8 +132,100 @@ class TestCaseGenerator:
             )
             return completion.choices[0].message.content
         except Exception as e:
-            print(f"⚠️ API调用失败: {str(e)}")
+            import logging
+            logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+            logging.error(f"API调用失败: {str(e)}")
             return None
+
+#     def _build_prompt(self, requirements: List[Dict[str, Any]], 
+#                      signals: Dict[str, Dict[str, Any]]) -> str:
+#         """构建AI生成测试用例的提示词"""
+#         # 示例测试用例格式说明
+#         example_format = """
+# 【测试用例格式】[
+#   {
+#     "description": "挂R档，倒车灯点亮",
+#     "coverage": ["需求1.1", "VCU_ActGear"],
+#     "input_signal": {
+#       "IGN1_RELAY_FB": "ON",
+#       "VCU_ActGear": "0x9",
+#       "VCU_ActGear_VD": "0x0"
+#     },
+#     "output_signal": "倒车灯点亮",
+#     "precondition": [
+#       "车辆处于ON电源模式",
+#       "当前档位为P档",
+#       "档位信号有效"
+#     ],
+#     "steps": [
+#       "1. 确认车辆处于ON电源模式",
+#       "2. 确认当前档位为P档",
+#       "3. 切换档位至R档",
+#       "4. 观察倒车灯状态"
+#     ],
+#     "expected": [
+#       "倒车灯应点亮"
+#     ]
+#   }
+# ]        """
+        
+#         # 构建提示词
+#         prompt = f"""
+# 你是一位专业的汽车电子测试工程师，擅长根据功能规范和CAN信号矩阵生成全面的测试用例。
+
+# 【功能规范】
+# {json.dumps(requirements, indent=2, ensure_ascii=False)}
+
+# 【CAN信号矩阵】
+# {json.dumps(signals, indent=2, ensure_ascii=False)}
+
+# 请基于以上信息，生成符合以下要求的测试用例：
+# 1. 测试用例描述简洁，直接说明测试场景和验证内容，如“挂R档，倒车灯点亮”。
+# 2. 覆盖所有功能需求，包括正常、异常和边界情况
+# 3. 每个测试用例必须包含：
+#    - 测试描述（简明扼要地说明测试内容）
+#    - 覆盖的需求ID/信号ID
+#    - 详细测试步骤（使用序号开头，如"1. 操作内容"）
+#    - 预期结果（明确的预期行为）
+#    - 输入信号（使用信号名称和有效值）
+#    - 输出信号（预期的信号变化）
+#    - 前置条件（执行测试前必须满足的条件）
+# 4. 输出格式：[
+#   {{
+#     "description": "测试描述",
+#     "coverage": ["需求ID/信号ID"],
+#     "input_signal": {{
+#       "信号名称": "信号值"
+#     }},
+#     "output_signal": "输出信号变化",
+#     "precondition": ["前置条件1", "前置条件2"],
+#     "steps": ["步骤1", "步骤2"],
+#     "expected": ["预期结果1", "预期结果2"]
+#   }}
+# ]
+# 以下是一个测试用例的示例格式：
+# {example_format}
+#         """
+        
+#         return prompt
+    
+#     def _call_ai(self, prompt: str) -> Optional[str]:
+#         """调用AI生成测试用例"""
+#         try:
+#             print("正在调用AI生成测试用例...")
+#             completion = self.client.chat.completions.create(
+#                 model=self.config.MODEL,
+#                 messages=[
+#                     {"role": "system", "content": "你是一个专业的汽车电子测试工程师，擅长根据功能规范和CAN信号矩阵生成全面的测试用例。"},
+#                     {"role": "user", "content": prompt}
+#                 ],
+#                 temperature=0.3,  # 降低随机性，提高确定性
+#                 max_tokens=4000
+#             )
+#             return completion.choices[0].message.content
+#         except Exception as e:
+#             print(f"⚠️ API调用失败: {str(e)}")
+#             return None
     
     def _parse_response(self, response: str, 
                        requirements: List[Dict[str, Any]], 
