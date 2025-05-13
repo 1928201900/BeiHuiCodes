@@ -23,15 +23,26 @@ class DocumentParser:
             
         with open(pdf_path, 'rb') as f:
             reader = PyPDF2.PdfReader(f)
-            text = "\n".join([page.extract_text() for page in reader.pages])
+            # 增强文本提取，处理可能的编码问题
+            text = ""
+            for page in reader.pages:
+                try:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+                except Exception as e:
+                    print(f"⚠️ 页面解析异常: {str(e)}")
+                    continue
         
-        # 提取章节标题和内容
+        # 增强章节分割逻辑
         sections = self._extract_sections(text)
         
-        # 提取功能和信号相关信息
+        # 增强功能需求提取
         requirements = []
         for section in sections:
-            if "功能" in section["title"] or "需求" in section["title"] or "工作条件" in section["title"]:
+            # 扩展关键词识别
+            keywords = ["功能", "需求", "工作条件", "要求", "规范", "specification"]
+            if any(kw in section["title"] for kw in keywords):
                 functions = self._extract_functions(section["content"])
                 requirements.extend(functions)
                 
@@ -151,11 +162,13 @@ class DocumentParser:
         """从内容中提取功能需求"""
         functions = []
         
-        # 尝试多种可能的功能定义模式
+        # 增强模式匹配
         patterns = [
-            re.compile(r'(\d+\.\d+)\s*([^\n]+)'),  # 数字.数字 格式
-            re.compile(r'(\d+)\s*、\s*([^\n]+)'),  # 数字、格式
-            re.compile(r'([A-Z]\d+)\s*([^\n]+)'),  # 字母数字格式
+            re.compile(r'(\d+\.\d+(?:\.\d+)*)\s*([^\n]+)'),  # 支持多级编号
+            re.compile(r'([A-Z]{2,3}_\d+)\s*([^\n]+)'),  # 支持类似"ECU_001"的编号
+            re.compile(r'(\d+)\s*、\s*([^\n]+)'),  
+            re.compile(r'([A-Z]\d+)\s*([^\n]+)'),
+            re.compile(r'(?:需求|功能)\s*[:：]\s*([^\n]+)')  # 支持"需求："开头的行
         ]
         
         current_id = None
@@ -182,7 +195,7 @@ class DocumentParser:
                         "type": self._classify_function("\n".join(current_desc))
                     })
                 current_id = func_match.group(1)
-                current_desc = [func_match.group(2)]
+                current_desc = [func_match.group(2)] if len(func_match.groups()) > 1 else [line]
             else:
                 current_desc.append(line)
                 
