@@ -36,21 +36,27 @@ class OutputHandler:
         ]
         ws.append(headers)
         
-        # 填充数据
+        # # 填充数据
         for case in test_cases:
+            # 转换 input_signal 格式
+            input_signal_dict = case.get("input_signal", {})
+            input_signal_str = ',\n'.join([f"{key}={value}" for key, value in input_signal_dict.items()])
+            
             # 转换为标准格式
             function_row = {
                 "Object Type": "Function",
                 "Name": self._extract_function_name(case.get("description", "")),
                 "Short Description / Action": case.get("description", ""),
                 "Expected Result": ", ".join(case.get("expected", [])),
-                "input signal": json.dumps(case.get("input_signal", {}), ensure_ascii=False),
+                "input signal": input_signal_str,
                 "output signal": case.get("output_signal", ""),
                 "Feature": self._extract_feature(case.get("coverage", [])),
                 "Test Group": self._extract_test_group(case.get("coverage", [])),
                 "Test Case": case.get("description", ""),
                 "Precondition": "\n".join(case.get("precondition", []))
             }
+
+
             
             # 添加功能行
             ws.append([
