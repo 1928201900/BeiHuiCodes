@@ -30,8 +30,7 @@ class OutputHandler:
         # 表头
         headers = [
             "Object Type", "Name", "Short Description / Action", 
-            "Expected Result", "input signal", "output signal",
-            "Feature", "Test Group", "Test Case", "Precondition"
+            "Expected Result", "input signal", "output signal"
         ]
         ws.append(headers)
         
