@@ -30,8 +30,7 @@ class OutputHandler:
         # 表头
         headers = [
             "Object Type", "Name", "Short Description / Action", 
-            "Expected Result", "input signal", "output signal",
-            "Feature", "Test Group", "Test Case", "Precondition"
+            "Expected Result", "input signal", "output signal"
         ]
         ws.append(headers)
         
@@ -76,9 +75,9 @@ class OutputHandler:
 
             # 添加 Precondition 行
             preconditions = case.get("precondition", [])
-            precondition_str = '\n'.join([f"{i + 1}. {p}" for i, p in enumerate(preconditions)])
+            precondition_str = ',\n'.join([f"{i + 1}. {p}" for i, p in enumerate(preconditions)])
             input_signal_dict = case.get("input_signal", {})
-            input_signal_str = '\n'.join([f"{key}={value}" for key, value in input_signal_dict.items()])
+            input_signal_str = ',\n'.join([f"{key}={value}" for key, value in input_signal_dict.items()])
             ws.append(["Precondition", "", precondition_str, "", input_signal_str, "", "", "", "", ""])
             dv.add(f'A{ws.max_row}')
 
