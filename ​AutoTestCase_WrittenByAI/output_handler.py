@@ -5,9 +5,8 @@ from typing import List, Dict, Any, Optional
 import json
 
 '''
-定义了 DocumentParser 类，用于解析功能规范 PDF 文件和 CAN 信号矩阵 Excel 文件。
-它可以从 PDF 文件中提取结构化的功能需求，
-从 Excel 文件中提取 CAN 信号信息，并将这些信息合并返回。
+定义了 OutputHandler 类，负责将生成的测试用例保存到 Excel 文件中。
+根据新的格式要求，将测试用例按照特定的层级结构输出到 Excel 中。
 '''
 
 class OutputHandler:
@@ -36,60 +35,72 @@ class OutputHandler:
         ]
         ws.append(headers)
         
-        # # 填充数据
+        # 设置数据验证
+        dv = openpyxl.worksheet.datavalidation.DataValidation(type="list", formula1='"Function,Feature,Test Group,Test Case,Precondition,Test Step"')
+        ws.add_data_validation(dv)
+
+        # 临时存储已添加的 Function、Feature 和 Test Group
+        added_functions = set()
+        added_features = set()
+        added_test_groups = set()
+
         for case in test_cases:
-            # 转换 input_signal 格式
+            function_name = self._extract_function_name(case.get("description", ""))
+            feature_name = self._extract_feature(case.get("coverage", []))
+            test_group_name = self._extract_test_group(case.get("coverage", []))
+            test_case_name = case.get("description", "")
+
+            # 添加 Function 行
+            if function_name not in added_functions:
+                ws.append(["Function", function_name, "", "", "", "", "", "", "", ""])
+                dv.add(f'A{ws.max_row}')
+                added_functions.add(function_name)
+
+            # 添加 Feature 行
+            feature_key = (function_name, feature_name)
+            if feature_key not in added_features:
+                ws.append(["Feature", feature_name, "", "", "", "", "", "", "", ""])
+                dv.add(f'A{ws.max_row}')
+                added_features.add(feature_key)
+
+            # 添加 Test Group 行
+            test_group_key = (feature_name, test_group_name)
+            if test_group_key not in added_test_groups:
+                ws.append(["Test Group", test_group_name, "", "", "", "", "", "", "", ""])
+                dv.add(f'A{ws.max_row}')
+                added_test_groups.add(test_group_key)
+
+            # 添加 Test Case 行
+            ws.append(["Test Case", test_case_name, "", "", "", "", "", "", "", ""])
+            dv.add(f'A{ws.max_row}')
+
+            # 添加 Precondition 行
+            preconditions = case.get("precondition", [])
+            precondition_str = '\n'.join([f"{i + 1}. {p}" for i, p in enumerate(preconditions)])
             input_signal_dict = case.get("input_signal", {})
-            input_signal_str = ',\n'.join([f"{key}={value}" for key, value in input_signal_dict.items()])
-            
-            # 转换为标准格式
-            function_row = {
-                "Object Type": "Function",
-                "Name": self._extract_function_name(case.get("description", "")),
-                "Short Description / Action": case.get("description", ""),
-                "Expected Result": ", ".join(case.get("expected", [])),
-                "input signal": input_signal_str,
-                "output signal": case.get("output_signal", ""),
-                "Feature": self._extract_feature(case.get("coverage", [])),
-                "Test Group": self._extract_test_group(case.get("coverage", [])),
-                "Test Case": case.get("description", ""),
-                "Precondition": "\n".join(case.get("precondition", []))
-            }
+            input_signal_str = '\n'.join([f"{key}={value}" for key, value in input_signal_dict.items()])
+            ws.append(["Precondition", "", precondition_str, "", input_signal_str, "", "", "", "", ""])
+            dv.add(f'A{ws.max_row}')
 
-
-            
-            # 添加功能行
-            ws.append([
-                function_row["Object Type"],
-                function_row["Name"],
-                function_row["Short Description / Action"],
-                function_row["Expected Result"],
-                function_row["input signal"],
-                function_row["output signal"],
-                function_row["Feature"],
-                function_row["Test Group"],
-                function_row["Test Case"],
-                function_row["Precondition"]
-            ])
-            
-            # 添加测试步骤行
-            for step in case.get("steps", []):
+            # 添加 Test Step 行
+            steps = case.get("steps", [])
+            expected_results = case.get("expected", [])
+            output_signal = case.get("output_signal", "")
+            for step in steps:
                 ws.append([
                     "Test Step",
-                    function_row["Name"],
+                    "",
                     step,
+                    ', '.join(expected_results),
+                    input_signal_str,
+                    output_signal,
                     "",
                     "",
                     "",
-                    function_row["Feature"],
-                    function_row["Test Group"],
-                    function_row["Test Case"],
                     ""
                 ])
-            
-            # 添加空行分隔不同测试用例
-            ws.append([])
-            
+                dv.add(f'A{ws.max_row}')
+
         # 保存文件
         wb.save(output_path)
         print(f"✅ 测试用例已保存至: {output_path}")
